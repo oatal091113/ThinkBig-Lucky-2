@@ -1,0 +1,495 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Gift, Users, Trash2, Play, RotateCcw, X, Trophy, Settings } from 'lucide-react';
+
+export default function App() {
+  const [participants, setParticipants] = useState([
+    'สมชาย', 'สมหญิง', 'มานะ', 'มานี', 'ปิติ', 'ชูใจ'
+  ]);
+  const [inputText, setInputText] = useState('');
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentName, setCurrentName] = useState('?');
+  const [winner, setWinner] = useState(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [showBackend, setShowBackend] = useState(false);
+  const [winnersList, setWinnersList] = useState([]);
+  
+  // สร้าง Array เปล่า 10 ช่องสำหรับเก็บชื่อรางวัล
+  const [prizes, setPrizes] = useState([
+    'รางวัลที่ 1', 'รางวัลที่ 2', 'รางวัลที่ 3', '', '', '', '', '', '', ''
+  ]);
+  // เก็บ Index ของรางวัลที่กำลังติ๊กเลือกอยู่ (เริ่มต้นที่ 0 คือรางวัลแรก)
+  const [activePrize, setActivePrize] = useState(0);
+
+  const handleAddParticipants = () => {
+    if (!inputText.trim()) return;
+    
+    // Split by new line, remove empty lines, and trim whitespace
+    const newNames = inputText
+      .split('\n')
+      .map(name => name.trim())
+      .filter(name => name.length > 0);
+      
+    if (newNames.length > 0) {
+      setParticipants(prev => [...prev, ...newNames]);
+      setInputText('');
+    }
+  };
+
+  const handleRemoveParticipant = (indexToRemove) => {
+    setParticipants(participants.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleClearAll = () => {
+    // นำการถามยืนยัน (window.confirm) ออก เพื่อไม่ให้ถูกระบบพรีวิวบล็อก
+    setParticipants([]);
+    setWinner(null);
+    setCurrentName('?');
+  };
+
+  const handleRemoveFromHistory = (indexToRemove) => {
+    setWinnersList(winnersList.filter((_, index) => index !== indexToRemove));
+  };
+
+  const startDraw = () => {
+    if (participants.length === 0) {
+      alert('กรุณาเพิ่มรายชื่อผู้เข้าร่วมก่อนจับฉลาก!');
+      return;
+    }
+
+    setIsDrawing(true);
+    setWinner(null);
+    setShowConfetti(false);
+    
+    let drawInterval;
+    let duration = 3000; // 3 seconds of shuffling
+    let elapsed = 0;
+    
+    // Rapidly shuffle names
+    drawInterval = setInterval(() => {
+      const randomIndex = Math.floor(Math.random() * participants.length);
+      setCurrentName(participants[randomIndex]);
+      elapsed += 50;
+      
+      if (elapsed >= duration) {
+        clearInterval(drawInterval);
+        finishDraw();
+      }
+    }, 50);
+  };
+
+  const finishDraw = () => {
+    const winnerIndex = Math.floor(Math.random() * participants.length);
+    const selectedWinner = participants[winnerIndex];
+    
+    setCurrentName(selectedWinner);
+    setWinner(selectedWinner);
+    setIsDrawing(false);
+    setShowConfetti(true);
+    
+    // บันทึกรายชื่อลงในประวัติผู้ได้รับรางวัล พร้อมชื่อรางวัลที่กำลังติ๊กเลือกอยู่
+    const currentPrizeName = prizes[activePrize];
+    setWinnersList(prev => [...prev, { name: selectedWinner, prize: currentPrizeName }]);
+    
+    // Turn off confetti after a while
+    setTimeout(() => {
+      setShowConfetti(false);
+    }, 5000);
+  };
+
+  const removeWinner = () => {
+    if (winner) {
+      setParticipants(participants.filter(p => p !== winner));
+      setWinner(null);
+      setCurrentName('?');
+    }
+  };
+
+  // Simple Confetti Component
+  const Confetti = () => {
+    return (
+      <div className="fixed inset-0 pointer-events-none z-50 overflow-hidden flex justify-center">
+        {[...Array(50)].map((_, i) => (
+          <div
+            key={i}
+            className="absolute animate-confetti-fall"
+            style={{
+              left: `${Math.random() * 100}%`,
+              top: `-10%`,
+              backgroundColor: ['#dc2626', '#ef4444', '#ffffff', '#fcd34d', '#f87171'][Math.floor(Math.random() * 5)],
+              width: `${Math.random() * 10 + 5}px`,
+              height: `${Math.random() * 10 + 5}px`,
+              borderRadius: Math.random() > 0.5 ? '50%' : '0',
+              animationDuration: `${Math.random() * 3 + 2}s`,
+              animationDelay: `${Math.random() * 0.5}s`,
+              transform: `rotate(${Math.random() * 360}deg)`
+            }}
+          />
+        ))}
+        <style>{`
+          @keyframes confetti-fall {
+            0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+            100% { transform: translateY(100vh) rotate(720deg); opacity: 0; }
+          }
+        `}</style>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen flex flex-col bg-gradient-to-br from-rose-100 via-pink-50 to-amber-100 text-gray-800 font-sans selection:bg-red-500 selection:text-white p-2 md:p-4 relative overflow-hidden">
+      {/* Decorative Background Blobs */}
+      <div className="absolute top-0 left-0 w-96 h-96 bg-pink-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob"></div>
+      <div className="absolute top-0 right-0 w-96 h-96 bg-yellow-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob" style={{ animationDelay: '2s' }}></div>
+      <div className="absolute -bottom-8 left-1/2 w-96 h-96 bg-rose-300 rounded-full mix-blend-multiply filter blur-3xl opacity-40 animate-blob" style={{ animationDelay: '4s' }}></div>
+
+      {showConfetti && <Confetti />}
+
+      {/* Backend Modal */}
+      {showBackend && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white/95 backdrop-blur-xl border border-white/50 rounded-3xl p-6 w-full max-w-2xl shadow-2xl relative max-h-[90vh] flex flex-col animate-in fade-in zoom-in duration-200 ring-1 ring-black/5">
+            <button 
+              onClick={() => setShowBackend(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-red-600 transition-colors bg-gray-100 p-2 rounded-full hover:bg-red-50"
+            >
+              <X className="w-5 h-5" />
+            </button>
+            
+            <h2 className="text-xl md:text-2xl font-bold mb-4 flex items-center text-red-600 border-b border-gray-200 pb-4">
+              <Settings className="w-6 h-6 mr-2" />
+              ระบบหลังบ้าน - จัดการข้อมูลและรางวัล
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 overflow-hidden flex-1">
+              {/* Left: Input */}
+              <div className="flex flex-col space-y-4">
+                {/* 1. Prizes Config */}
+                <div className="flex flex-col bg-gray-50 p-3 rounded-xl border border-gray-200">
+                  <label className="text-sm text-gray-800 font-bold mb-2">1. ตั้งค่าชื่อรางวัล 10 รางวัล</label>
+                  <div className="space-y-2 max-h-[160px] overflow-y-auto custom-scrollbar pr-2">
+                    {prizes.map((prize, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <span className="text-xs text-gray-500 w-6 font-medium text-right">{index + 1}.</span>
+                        <input
+                          type="text"
+                          value={prize}
+                          onChange={(e) => {
+                            const newPrizes = [...prizes];
+                            newPrizes[index] = e.target.value;
+                            setPrizes(newPrizes);
+                          }}
+                          placeholder={`ชื่อรางวัลที่ ${index + 1}`}
+                          className="flex-1 bg-white border border-gray-300 rounded-md p-1.5 text-sm text-gray-800 focus:outline-none focus:ring-1 focus:ring-red-500"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 2. Add Names */}
+                <div className="flex flex-col flex-1">
+                  <label className="text-sm text-gray-800 font-bold mb-2">2. เพิ่มรายชื่อใหม่</label>
+                  <textarea
+                    value={inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder="พิมพ์รายชื่อที่นี่...&#10;(กด Enter เพื่อขึ้นบรรทัดใหม่)"
+                    className="w-full flex-1 min-h-[100px] bg-white border border-gray-300 rounded-xl p-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 resize-none mb-3 shadow-inner"
+                  />
+                  <button
+                    onClick={handleAddParticipants}
+                    disabled={!inputText.trim()}
+                    className="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 rounded-xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 shadow-md text-sm"
+                  >
+                    เพิ่มรายชื่อลงกล่อง
+                  </button>
+                </div>
+              </div>
+
+              {/* Right: List Management */}
+              <div className="flex flex-col border-t pt-4 md:pt-0 md:border-t-0 md:border-l border-gray-200 md:pl-6 overflow-hidden">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm text-gray-600 font-medium">รายชื่อในกล่อง ({participants.length})</span>
+                  <button 
+                    onClick={handleClearAll}
+                    disabled={participants.length === 0}
+                    className="text-xs text-red-600 hover:text-red-700 transition-colors flex items-center disabled:opacity-50 bg-red-50 px-2 py-1 rounded-md"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> ล้างทั้งหมด
+                  </button>
+                </div>
+                
+                <div className="overflow-y-auto flex-1 space-y-2 custom-scrollbar bg-gray-50 p-2 rounded-xl border border-gray-200 min-h-[150px]">
+                  {participants.length === 0 ? (
+                    <p className="text-center text-gray-400 text-sm py-4 italic">ไม่มีรายชื่อ</p>
+                  ) : (
+                    participants.map((p, index) => (
+                      <div key={index} className="flex justify-between items-center bg-white border border-gray-200 rounded-lg px-2 py-1.5 group hover:bg-gray-50 transition-colors shadow-sm">
+                        <span className="truncate pr-2 text-sm">{p}</span>
+                        <button 
+                          onClick={() => handleRemoveParticipant(index)}
+                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content Wrapper */}
+      <div className="flex-1 w-full max-w-6xl mx-auto flex flex-col relative z-10 pb-4">
+        
+        {/* Header */}
+        <header className="text-center py-4 relative z-10 flex-shrink-0">
+          <h1 className="text-3xl md:text-5xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-red-600 via-pink-500 to-orange-500 tracking-tight drop-shadow-sm">
+            ผู้โชคดีงาน THINK BIG
+          </h1>
+        </header>
+
+        {/* Layout Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6 flex-1 h-full">
+          
+          {/* Left Column: Inputs & List */}
+          <div className="lg:col-span-4 flex flex-col gap-4 md:gap-6">
+            <div className="bg-white/80 backdrop-blur-lg border border-white rounded-3xl p-5 shadow-xl ring-1 ring-black/5 flex flex-col flex-shrink-0">
+              <h2 className="text-lg font-bold mb-3 flex items-center text-red-600">
+                <Users className="w-5 h-5 mr-2" />
+                รายชื่อผู้เข้าร่วม ({participants.length})
+              </h2>
+              
+              <button
+                onClick={() => setShowBackend(true)}
+                disabled={isDrawing}
+                className="w-full bg-white border-2 border-red-600 hover:bg-red-50 text-red-600 font-bold py-2.5 rounded-xl transition-all flex items-center justify-center shadow-sm disabled:opacity-50 disabled:cursor-not-allowed mb-3"
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                จัดการรายชื่อ (หลังบ้าน)
+              </button>
+
+              <div className="pt-3 border-t border-gray-200/60 flex flex-col flex-1 min-h-0">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-gray-500 font-medium">รายชื่อในกล่องจับฉลาก</span>
+                  <button 
+                    onClick={handleClearAll}
+                    disabled={participants.length === 0 || isDrawing}
+                    className="text-[10px] md:text-xs text-red-500 hover:text-red-700 bg-red-50 px-2 py-1 rounded-md transition-colors flex items-center disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> ล้างทั้งหมด
+                  </button>
+                </div>
+                
+                <div className="max-h-40 overflow-y-auto pr-2 space-y-1.5 custom-scrollbar">
+                  {participants.length === 0 ? (
+                    <p className="text-center text-gray-400 text-xs py-2 italic">ไม่มีรายชื่อ</p>
+                  ) : (
+                    participants.map((p, index) => (
+                      <div key={index} className="flex justify-between items-center bg-gray-50/80 border border-gray-200 rounded-lg px-2.5 py-1.5 group hover:bg-gray-100 transition-colors">
+                        <span className="truncate pr-2 font-medium text-sm text-gray-700">{p}</span>
+                        <button 
+                          onClick={() => handleRemoveParticipant(index)}
+                          disabled={isDrawing}
+                          className="text-gray-400 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all disabled:opacity-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Winners List Box */}
+            <div className="bg-white/90 backdrop-blur-lg border border-yellow-200 rounded-3xl p-5 shadow-xl ring-1 ring-yellow-400/20 relative overflow-hidden flex flex-col flex-shrink-0">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-yellow-300/20 rounded-full blur-2xl pointer-events-none"></div>
+              
+              <h2 className="text-lg font-bold mb-3 flex items-center text-orange-600 relative z-10">
+                <Trophy className="w-5 h-5 mr-2 text-yellow-500" />
+                ทำเนียบผู้ได้รับรางวัล ({winnersList.length})
+              </h2>
+              
+              <div className="pt-2 border-t border-yellow-100/60 relative z-10 flex flex-col flex-1 min-h-0">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs text-orange-600/70 font-medium">รายชื่อผู้โชคดี</span>
+                  <button 
+                    onClick={() => setWinnersList([])}
+                    disabled={winnersList.length === 0 || isDrawing}
+                    className="text-[10px] md:text-xs text-orange-500 hover:text-orange-700 bg-orange-50 px-2 py-1 rounded-md transition-colors flex items-center disabled:opacity-50"
+                  >
+                    <Trash2 className="w-3 h-3 mr-1" /> ล้างประวัติ
+                  </button>
+                </div>
+
+                <div className="max-h-40 overflow-y-auto pr-2 space-y-1.5 custom-scrollbar">
+                  {winnersList.length === 0 ? (
+                    <p className="text-center text-orange-400/60 text-xs py-2 italic">ยังไม่มีผู้ได้รับรางวัล</p>
+                  ) : (
+                    winnersList.map((w, index) => (
+                      <div key={index} className="flex items-center justify-between bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200/80 rounded-lg px-2.5 py-2 shadow-sm group">
+                        <div className="flex items-center min-w-0 flex-1">
+                          <span className="flex-shrink-0 w-5 h-5 bg-yellow-400 text-yellow-900 rounded-full flex items-center justify-center text-[10px] font-bold mr-2">
+                            {index + 1}
+                          </span>
+                          <div className="flex flex-col min-w-0 flex-1 leading-tight">
+                            <span className="font-bold text-sm text-orange-800 truncate">{w.name}</span>
+                            {w.prize && <span className="text-[10px] text-orange-600 truncate">รางวัล: {w.prize}</span>}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleRemoveFromHistory(index)}
+                          disabled={isDrawing}
+                          title="ลบรายชื่อนี้ออก (กรณีไม่มารับรางวัล)"
+                          className="text-orange-300 hover:text-red-500 opacity-0 group-hover:opacity-100 transition-all p-1 ml-1 disabled:opacity-0"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Draw Area */}
+          <div className="lg:col-span-8 flex flex-col h-full">
+            <div className="bg-white/80 backdrop-blur-lg border border-white rounded-3xl p-5 md:p-6 shadow-xl ring-1 ring-black/5 flex-1 flex flex-col relative overflow-hidden">
+              
+              <div className="z-10 w-full flex-1 flex flex-col">
+                {/* Result Display Box */}
+                <div className={`w-full flex-1 min-h-[220px] rounded-3xl border-4 flex flex-col items-center justify-center p-4 md:p-6 text-center transition-all duration-300 shadow-sm ${
+                  winner 
+                    ? 'bg-gradient-to-br from-red-500 via-rose-600 to-red-700 border-yellow-400 scale-[1.02] shadow-[0_0_30px_rgba(220,38,38,0.4)] text-white' 
+                    : isDrawing
+                      ? 'bg-gradient-to-r from-pink-50 via-red-50 to-yellow-50 border-pink-400 animate-pulse text-gray-800'
+                      : 'bg-white/60 border-gray-200 text-gray-800 hover:border-red-300'
+                }`}>
+                  
+                  {winner && (
+                    <Trophy className="w-12 h-12 md:w-16 md:h-16 text-yellow-300 mb-3 animate-bounce drop-shadow-md" />
+                  )}
+                  
+                  <span className={`text-base md:text-lg mb-1 md:mb-2 font-medium ${winner ? 'text-red-100' : 'text-gray-500'}`}>
+                    {winner ? 'ผู้โชคดีได้แก่!' : isDrawing ? 'กำลังสุ่ม...' : 'ผู้โชคดีคนต่อไป'}
+                  </span>
+
+                  {prizes[activePrize] && (
+                    <div className={`text-lg md:text-2xl font-bold mb-2 md:mb-4 ${winner ? 'text-yellow-200 drop-shadow-sm' : 'text-red-500'}`}>
+                      รางวัล: {prizes[activePrize]}
+                    </div>
+                  )}
+                  
+                  <div className={`font-bold break-words w-full px-2 ${
+                    winner ? 'text-4xl md:text-6xl drop-shadow-lg' : 'text-3xl md:text-5xl'
+                  }`}>
+                    {currentName}
+                  </div>
+                </div>
+
+                {/* Controls Area */}
+                <div className="mt-4 md:mt-6 flex flex-col w-full gap-3 md:gap-4 flex-shrink-0">
+                  
+                  {/* Frontend Prize Selector (Compact 5 columns) */}
+                  <div className="w-full bg-white/60 backdrop-blur-md rounded-2xl p-3 border border-red-100 shadow-sm">
+                    <label className="block text-xs md:text-sm text-red-800 font-bold mb-2 text-center flex items-center justify-center">
+                      <Gift className="w-3.5 h-3.5 mr-1.5" />
+                      ติ๊กเลือกรางวัลที่จะจับในรอบนี้
+                    </label>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-1.5 md:gap-2">
+                      {prizes.map((prize, index) => {
+                        const displayName = prize.trim() || `รางวัล ${index + 1}`;
+                        return (
+                          <label 
+                            key={index} 
+                            className={`flex items-center p-1.5 md:p-2 rounded-lg cursor-pointer transition-all border ${
+                              activePrize === index 
+                                ? 'bg-red-50 border-red-500 shadow-sm' 
+                                : 'bg-white border-gray-200 hover:border-red-300'
+                            } ${isDrawing ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          >
+                            <input
+                              type="radio"
+                              name="frontendActivePrize"
+                              checked={activePrize === index}
+                              onChange={() => setActivePrize(index)}
+                              disabled={isDrawing}
+                              className="w-3.5 h-3.5 text-red-600 focus:ring-red-500 cursor-pointer mr-1.5 flex-shrink-0"
+                            />
+                            <span className={`text-xs truncate flex-1 ${activePrize === index ? 'text-red-700 font-bold' : 'text-gray-600'}`}>
+                              {displayName}
+                            </span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Draw Buttons */}
+                  <div className="flex flex-col sm:flex-row gap-3 w-full">
+                    <button
+                      onClick={startDraw}
+                      disabled={isDrawing || participants.length === 0}
+                      className={`flex-1 flex items-center justify-center py-3 px-6 rounded-2xl font-bold text-lg md:text-xl transition-all shadow-md ${
+                        isDrawing || participants.length === 0
+                          ? 'bg-gray-200 cursor-not-allowed text-gray-400 border border-gray-300'
+                          : 'bg-gradient-to-r from-red-500 via-rose-500 to-orange-500 hover:from-red-600 hover:via-rose-600 hover:to-orange-600 text-white hover:scale-[1.02] hover:shadow-lg hover:shadow-red-500/40 active:scale-95 border border-red-500/50'
+                      }`}
+                    >
+                      <Play className="w-5 h-5 mr-2 fill-current" />
+                      จับฉลากเลย!
+                    </button>
+
+                    {winner && (
+                      <button
+                        onClick={removeWinner}
+                        className="flex items-center justify-center py-3 px-4 rounded-2xl font-semibold bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 transition-all hover:scale-[1.02] shadow-sm text-sm"
+                        title="ลบรายชื่อผู้ชนะออกจากกล่องเพื่อไม่ให้จับซ้ำ"
+                      >
+                        <RotateCcw className="w-4 h-4 mr-1.5" />
+                        นำผู้ชนะออก
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      {/* Global Styles for Scrollbar */}
+      <style>{`
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 5px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #f3f4f6;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #d1d5db;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #9ca3af;
+        }
+        @keyframes blob {
+          0% { transform: translate(0px, 0px) scale(1); }
+          33% { transform: translate(30px, -50px) scale(1.1); }
+          66% { transform: translate(-20px, 20px) scale(0.9); }
+          100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+      `}</style>
+    </div>
+  );
+}
